@@ -1,0 +1,94 @@
+#!/bin/sh
+
+# BIB="$BIB"
+# BIB_PDF_PATH="$BIB_PDF_PATH"
+BIB_GENERIC_FONT=Monospace-15
+BIB_NOTIF_FONT=Monospace-25
+BIB_GENERIC_COLOR=#005577
+BIB_SER="SER - Search BibTeX on Internet"
+BIB_REF="REF - Get BibTeX label for reference"
+BIB_PDF="PDF - Manually Rename and encode metadata into pdf"
+BIB_AUO="AUO - Automatically rename and encode metadata into pdf"
+BIBACTLIST="$(printf '%s\n' "$BIB_SER" "$BIB_REF" "$BIB_PDF" "$BIB_AUO")"
+nl='
+'
+doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
+
+. dmenubib-menu
+. dmenubib-search
+. dmenubib-refer
+. dmenubib-pdfmeta
+
+CheckDeps () {
+    depcount=0
+    for CurDep in "$@"; do
+	if ! command -v "$CurDep" 1> /dev/null 2>&1; then
+	    printf '%s\n' "ERROR: Dependency $CurDep not met."  1>&2
+	    depcount=$((depcount+1))
+	fi
+    done
+    unset CurDep
+}
+
+CheckDeps grep awk dmenu exiftool sed eval pdftotext printf tail curl echo
+
+[ "$depcount" -gt 0 ] && exit 1
+
+BIB_Action () {
+    act="$(printf '%s\n' "$BIBACTLIST" | yprompt "Actions: " "$BIB_GENERIC_COLOR")"
+    case "$act" in
+	"$BIB_SER") BIB_SER ;;
+	"$BIB_REF") BIB_REF ;;
+	"$BIB_PDF") BIB_PDF ;;
+	"$BIB_AUO") BIB_AUO ;;
+    esac
+}
+
+BIB_SER () {
+    criteria="$(printf '%s\n' "Text" "PDF" | yprompt "Searching criteria: " "$BIB_GENERIC_COLOR")"
+    case "$criteria" in
+	"Text")
+	    input="$(xprompt "Type text to search: " "$BIB_GENERIC_COLOR")"
+	    [ -n "$input" ] && CheckArg "$input"
+	    ;;
+	"PDF")
+	    MainMenu
+	    [ -n "$CHOICE" ] && CheckArg "$CHOICE"
+	    ;;
+    esac
+    if [ -z "$doi" ]; then
+	DoiGen
+	if [ -n "$doi" ]; then
+	    BibGen
+	else
+	    BibYak
+	fi
+    else
+	BibGen
+    fi
+}
+
+BIB_REF () {
+    CheckBIB
+    SearchBIB
+    RefBIB
+}
+
+BIB_PDF () {
+    CheckBIB
+    MainMenu
+    if [ -n "$CHOICE" ]; then
+	CheckArg "$CHOICE"
+	SearchBIB
+	MetaGen
+	MetaPDFBind "$CHOICE"
+    fi
+}
+
+BIB_AUO () {
+    CheckBIB
+    MetaAutoGen
+    MetaFixGen
+}
+
+BIB_Action

@@ -1,0 +1,127 @@
+#!/bin/sh
+
+CheckArg () {
+    # Usage: CheckArg "[Arg]"
+    # Input: $1
+    # Output: $doi / $info
+    doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
+    if echo "$1" | grep -E -q "$doi_regex"; then
+	doi="$1"
+    elif [ "$(dd if="$1" count=4 bs=1)" = "%PDF" ]; then
+	doi="$(exiftool "$1" | grep -E "$doi_regex")" && doi="${doi##*: }"
+	[ -z "$doi" ] && { info="$(exiftool "$1" | grep "^Title")"; info="${info##*: }"; }
+	[ -z "$info" ] && info="$(pdftotext "$1" 2>/dev/null - | head -n 4)"
+	[ -z "$info" ] && NotiPrompt "Cannot identify doi, title or any content from pdf file." && exit 1
+    else
+	info="$1"
+    fi
+}
+
+waitclip () {
+    # Usage: waitclip "[CMD]"
+    # Input: "[CMD]"
+    # Output: $clip
+    count=1
+    while [ -z "$clip" ] && [ $count -le 3600 ]; do
+	clip="$(printf '%s' "$1" | ${SHELL:-"/bin/sh"})"
+	sleep 1
+	count=$(($count+1))
+    done
+}
+
+DoiGen () {
+    # Usage: DoiGen
+    # Input: $info
+    # Output: $doi
+    doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
+    if [ -n "$info" ] && command -v xclip; then
+	printf '%s' "" | xclip -selection clipboard # Clear clipboard
+	xdg-open "https://search.crossref.org/?q=$info" &
+	waitclip "xclip -o -selection clipboard"
+	if echo "$clip" | grep -E -q "$doi_regex"; then
+	    doi="$(xclip -o -selection clipboard)"
+	    doi="${doi##*doi.org/}"
+	else
+	    doi=""
+	fi
+    elif [ -n "$info" ] && command -v xsel; then
+	xsel -bc # Clear clipboard
+	xdg-open "https://search.crossref.org/?q=$info" &
+	waitclip "xsel -o --clipboard"
+	if echo "$clip" | grep -E -q "$doi_regex"; then
+	    doi="$(xsel -o --clipboard)"
+	    doi="${doi##*doi.org/}"
+	else
+	    doi=""
+	fi
+    elif [ -n "$info" ]; then
+	NotiPrompt "Need to install xclip or xsel as dependency" && exit 1
+    else
+	exit 0
+    fi
+}
+
+
+bibnl () {
+    # Add \n at end of file
+    nl='
+    '
+    if [ "$(tail -c 1 "$BIB")" != "$nl" ]; then
+	printf '%s\n' "" >> "$BIB"
+    fi
+}
+
+BibGen () {
+    # Usage: BibGen
+    # Input: $doi
+    # Output: $bibtex >> $BIB
+    if [ -n "$doi" ]; then
+	bibtex="$(curl -s "http://api.crossref.org/works/$doi/transform/application/x-bibtex")"
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
+		printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	else
+	    NotiPrompt "Reference already added"
+	fi
+    fi
+}
+
+BibYak () {
+    # Usage: BibYak
+    # Input: $clip
+    # Output: $bibtex >> $BIB
+    clip=""
+    if [ -n "$info" ] && command -v xclip; then
+	printf '%s' "" | xclip -selection clipboard # Clear clipboard
+	xdg-open "https://scholar.google.com/scholar?&q=$info" &
+	waitclip "xclip -o -selection clipboard"
+	bibtex="$clip"
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
+	    printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	else
+	    NotiPrompt "Reference already added"
+	fi
+    elif [ -n "$info" ] && command -v xsel; then
+	xsel -bc # Clear clipboard
+	xdg-open "https://scholar.google.com/scholar?&q=$info" &
+	waitclip "xsel -o --clipboard"
+	bibtex="$clip"
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
+	    printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	else
+	    NotiPrompt "Reference already added"
+	fi
+    fi
+}
+
+
+# CheckArg "$1"
+# if [ -z "$doi" ]; then
+#     DoiGen
+#      if [ -z "$doi" ]; then
+# 	 BibGen
+#      else
+# 	 BibYak
+#      fi
+# else
+#     BibGen
+# fi

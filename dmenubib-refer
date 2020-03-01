@@ -1,0 +1,106 @@
+#!/bin/sh
+
+colbind () {
+    # Usage: colbind "[VAR1]" "[VAR2]"
+    # Input: "$1" "$2"
+    # Output: "$1" --- "$2"
+    awk -v awk_lpart="$1" -v awk_rpart="$2" 'BEGIN{
+	split(awk_lpart,lp,/\n/)
+	split(awk_rpart,rp,/\n/)
+	for (i=1; i in lp; i++) {
+	    print lp[i],"--- " rp[i]
+	}
+    }'
+}
+
+# refgen () { # Usage: refgen [PATTERN]
+#     file="$(cat -u "$bibfile" | sed 's/\\//g')"
+#     ref="$(printf '%s' "$file" | awk -v RS='@' "$1" | head -n 1 | sed "s/.*{//g; s/,$//g")"
+# }
+
+clipcopy () {
+    # Usage:  clipcopy [CONTENT]
+    # Input: "$1"
+    # Output: Copy to clipboard
+    if [ -n "$1" ] && command -v xclip; then
+	printf '%s' "$1" | xclip -selection clipboard
+    elif [ -n "$1" ] && command -v xsel; then
+	printf '%s' "$1" | xsel --clipboard
+    fi
+}
+
+SearchBIB () {
+    # Usage: SearchBIB
+    # Input: Dmenu choice
+    # Output: $cite
+    criterion="$(printf '%s\n' "title" "authoryear" "mixed" | yprompt "Choose selection criterion: " "$BIB_GENERIC_COLOR")"
+    title="$(cat -u $BIB | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
+    author="$(cat -u $BIB | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
+    year="$(cat -u $BIB | grep -i "year.*" | sed "s/^.*year \?= \?{\?//g; s/}\?,\?$//g")"
+    date="$(cat -u $BIB | grep -i "date.*" | sed "s/^.*date \?= \?{\?//g; s/}\?,\?$//g")"
+    case "$criterion" in
+	"title")
+	    cite="$(printf '%s' "$title" | yprompt "Selct reference title: " "$BIB_GENERIC_COLOR")"
+	    ;;
+	"authoryear")
+	    cite="$(
+	    if [ -n "$date" ]; then
+		colbind "$author" "$date" | yprompt "Select author and date: " "$BIB_GENERIC_COLOR"
+	    else
+		colbind "$author" "$year" | yprompt "Select author and year: " "$BIB_GENERIC_COLOR"
+	    fi
+	    )"
+	    ;;
+	"mixed")
+	    cite="$(
+	    if [ -n "$date" ]; then
+		TMP="$(colbind "$author" "$date")"
+		colbind "$TMP" "$title" | yprompt "Select author, date and title: " "$BIB_GENERIC_COLOR"
+		unset TMP
+	    else
+		TMP="$(colbind "$author" "$year")"
+		colbind "$TMP" "$title" | yprompt "Select author, year and title: " "$BIB_GENERIC_COLOR"
+		unset TMP
+	    fi
+	    )"
+	    ;;
+    esac
+}
+
+RefBIB () {
+    # Usage: RefBIB
+    # Input: $criterion
+    # Output: $ref to clipboard
+    case "$criterion" in
+	"title")
+	    bibtexgen "/$cite/"
+	    [ -n "$ref" ] && clipcopy "$ref" && NotiPrompt "$ref copied to clipboard"
+	    ;;
+	"authoryear")
+	    cite_author="${cite%% --- *}"
+	    cite_year="${cite##* --- }"
+	    bibtexgen "/$cite_author/ && /$cite_year/"
+	    [ -n "$ref" ] && clipcopy "$ref" && NotiPrompt "$ref copied to clipboard"
+	    ;;
+	"mixed")
+	    cite_title="${cite##* --- }"
+	    bibtexgen "/$cite_title/"
+	    [ -n "$ref" ] && clipcopy "$ref" && NotiPrompt "$ref copied to clipboard"
+	    ;;
+    esac
+}
+
+CheckBIB () {
+    # Usage: CheckBIB
+    # Input: $BIB
+    # Output: $bibfile
+    if [ -n "$(echo "$BIB")" ]; then
+	bibfile="$BIB"
+    else
+	NotiPrompt "Need to set environment variable '$BIB'" && exit 1
+    fi
+}
+
+# CheckBIB
+# SearchBIB
+# RefBIB

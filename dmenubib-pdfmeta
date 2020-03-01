@@ -1,0 +1,114 @@
+#!/bin/sh
+
+bibtexgen () {
+    # Usage: bibtexgen [PATTERN]
+    # Input: $bibfile
+    # Output: $bibtex && $ref
+    file="$(cat -u "$bibfile" | sed 's/\\//g')"
+    bibtex="$(printf '%s' "$file" | awk -v RS='@' "$1")"
+    ref="$(printf '%s' "$bibtex" | head -n 1 | sed "s/.*{//g; s/,$//g")"
+}
+
+bib2list () {
+    # Usage: bib2list
+    # Input: $bibtex
+    # Output: $reflist -> [VARs]
+    # doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
+    # title="$(printf '%s' "$bibtex" | grep -i "title")"; title="${title##*\{}"; title="${title%%\}*}"
+    # author="$(printf '%s' "$bibtex" | grep -i "author")"; author="${author##*\{}"; author="${author%%\}*}"
+    # doi="$(printf '%s' "$bibtex" | grep -i "doi")"; doi="${doi##*\{}"; doi="${doi%%\}*}"
+    reflist="$(printf '%s' "$bibtex" |
+	sed "
+	    1 d
+	    $ d
+	    s/^[ \t@]*//g
+	    s/}\?,\?$/\"/g
+	    s/ \?= \?{\?/=\"/g
+	")"
+    eval "$reflist"
+}
+
+MetaGen () {
+    # Usage: MetaGen
+    # Input: criterion
+    # Output: $reflist
+    case "$criterion" in
+	"title")
+	    bibtexgen "/$cite/"
+	    bib2list
+	    ;;
+	"authoryear")
+	    cite_author="${cite%% --- *}"
+	    cite_year="${cite##* --- }"
+	    bibtexgen "/$cite_author/ && /$cite_year/"
+	    bib2list
+	    ;;
+	"mixed")
+	    cite_title="${cite##* --- }"
+	    bibtexgen "/$cite_title/"
+	    bib2list
+	    ;;
+    esac
+}
+
+MetaAutoGen () {
+    # Usage: MetaAutoGen
+    # Input: pdfs in "$BIB_PDF_PATH"
+    # Output: pdf metadata && $faillist
+    IFS="$nl"
+    Menu && list="$(printf '%s\n' "$FILEs" "$DOTFILEs")"
+    for pdf in $list; do
+	unset IFS
+	if [ "$(dd if="$pdf" count=4 bs=1 status=none)" = "%PDF" ]; then
+	    title="$(exiftool "$pdf" | grep -i "Title")"; title="${title##*: }"
+	    if [ -n "$title" ] && bibtexgen "/$title/" && [ -n "$ref" ]; then
+		bib2list
+		MetaPDFBind "$pdf"
+	    else
+		faillist="$(printf '%s\n' "$faillist" "$pdf")"
+	    fi
+	else
+	    continue
+	fi
+    done
+}
+
+MetaFixGen () {
+    # Usage: MetaFixGen
+    # Input: $faillist
+    # Output: pdf metadata
+    IFS="$nl"
+    while [ -n "$faillist" ]; do
+	CHOICE=$(printf '%s\n' "$faillist" | sed "/^$/ d" | yprompt "Select PDF files: " "$BIB_GENERIC_COLOR")
+	if [ -n "$CHOICE" ]; then
+	    SearchBIB
+	    MetaGen
+	    MetaPDFBind "$CHOICE"
+	    faillist="$(printf '%s\n' "${faillist#*"$CHOICE"}" "${faillist%%"$CHOICE"*}")"
+	else
+	    break
+	fi
+    done
+    unset IFS
+    NotiPrompt "Metadata for references updated."
+}
+
+MetaPDFBind () {
+    # Usage: MetaPDFBind
+    # Input: $ref, $title, $author, $doi
+    # Output: metadata -> pdf
+    if [ "${1##*/}" = "$ref.pdf" ]; then
+	ref=""
+	title=""
+	author=""
+	doi=""
+	continue
+    else
+	exiftool -Title="$title" -Author="$author" -doi="$doi" -filename="$ref.pdf" "$1" -overwrite_original
+	NotiPrompt "$ref Added"
+	ref=""
+	title=""
+	author=""
+	doi=""
+    fi
+}

@@ -1,0 +1,47 @@
+#!/bin/sh
+
+## PROMPT FUNCTIONS
+yprompt () { # Usage yprompt [MSG] [BG_COLOR]
+    dmenu -f -fn "$BIB_GENERIC_FONT" -i -sb "$2" -l 10 -p "$1"
+}
+
+xprompt () { # Usage xprompt [MSG] [BG_COLOR]
+    dmenu -f -fn "$BIB_GENERIC_FONT" -i -sb "$2" -p "$1" <&-
+}
+
+NotiPrompt () { # Usage NotiPrompt [MSG]
+    dmenu -f -fn "$BIB_NOTIF_FONT" -sb "#d79921" -sf "#1d2021" -nf "#000000" -nb "#000000" -p "$1" <&-
+}
+
+
+## MENUFUNCTIONS
+
+MenuFile () { # Generate file
+    IFS="$nl"
+    FILEs=$(
+    for file in "$BIB_PDF_PATH"/*; do
+	[ -f "$file" ] && printf '%s\n' "$file"
+    done
+)
+unset IFS
+}
+
+MenuDotFile () { # Generate dorfile
+    IFS="$nl"
+    DOTFILEs=$(
+    for file in "$BIB_PDF_PATH"/.*; do
+	[ -f "$file" ] && printf '%s\n' "$file"
+    done
+)
+unset IFS
+}
+
+Menu () { # Generate default menu
+    MenuFile
+    MenuDotFile
+}
+
+MainMenu () { # Usage: MainMenu
+    Menu && list=$(printf '%s\n' "$FILEs" "$DOTFILEs")
+    CHOICE=$(printf '%s\n' "$list" | sed "/^$/ d" | yprompt "Select PDF files: " "$BIB_GENERIC_COLOR")
+}
