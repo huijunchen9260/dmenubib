@@ -36,6 +36,7 @@ DoiGen () {
     doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
     if [ -n "$info" ] && command -v xclip; then
 	printf '%s' "" | xclip -selection clipboard # Clear clipboard
+	NotiPrompt "Copy DOI; If reference not found, copy non-DOI to acticate google scholar search"
 	xdg-open "https://search.crossref.org/?q=$info" &
 	waitclip "xclip -o -selection clipboard"
 	if echo "$clip" | grep -E -q "$doi_regex"; then
@@ -108,7 +109,7 @@ BibYak () {
 	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
 	    printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
 	else
-	    NotiPrompt "Reference already added"
+	    NotiPrompt "Reference already added / not exist"
 	fi
     fi
 }
