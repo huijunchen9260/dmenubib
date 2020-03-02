@@ -13,10 +13,6 @@ bib2list () {
     # Usage: bib2list
     # Input: $bibtex
     # Output: $reflist -> [VARs]
-    # doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
-    # title="$(printf '%s' "$bibtex" | grep -i "title")"; title="${title##*\{}"; title="${title%%\}*}"
-    # author="$(printf '%s' "$bibtex" | grep -i "author")"; author="${author##*\{}"; author="${author%%\}*}"
-    # doi="$(printf '%s' "$bibtex" | grep -i "doi")"; doi="${doi##*\{}"; doi="${doi%%\}*}"
     reflist="$(printf '%s' "$bibtex" |
 	sed "
 	    1 d
@@ -55,11 +51,13 @@ MetaAutoGen () {
     # Usage: MetaAutoGen
     # Input: pdfs in "$BIB_PDF_PATH"
     # Output: pdf metadata && $faillist
-    IFS="$nl"
     Menu && list="$(printf '%s\n' "$FILEs" "$DOTFILEs")"
+    IFS="$nl"
     for pdf in $list; do
 	unset IFS
-	if [ "$(dd if="$pdf" count=4 bs=1 status=none)" = "%PDF" ]; then
+	TMP="${pdf##*/}"; basename="${TMP%%.*}"
+	if [ "$(head -n 1 "$pdf" | cut -c 1-4)" = "%PDF" ] &&
+	    [ -z "$(grep "@" "$bibfile" | grep "$basename")" ]; then
 	    title="$(exiftool "$pdf" | grep -i "Title")"; title="${title##*: }"
 	    if [ -n "$title" ] && bibtexgen "/$title/" && [ -n "$ref" ]; then
 		bib2list
@@ -97,14 +95,7 @@ MetaPDFBind () {
     # Usage: MetaPDFBind
     # Input: $ref, $title, $author, $doi
     # Output: metadata -> pdf
-    if [ "${1##*/}" = "$ref.pdf" ]; then
-	ref=""
-	title=""
-	author=""
-	doi=""
-	continue
-    else
-	exiftool -Title="$title" -Author="$author" -doi="$doi" -filename="$ref.pdf" "$1" -overwrite_original
+    if exiftool -Title="$title" -Author="$author" -doi="$doi" -filename="$ref.pdf" "$1" -overwrite_original; then
 	NotiPrompt "$ref Added"
 	ref=""
 	title=""

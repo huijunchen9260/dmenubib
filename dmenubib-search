@@ -8,12 +8,33 @@ CheckArg () {
     if echo "$1" | grep -E -q "$doi_regex"; then
 	doi="$1"
     elif [ "$(dd if="$1" count=4 bs=1)" = "%PDF" ]; then
-	doi="$(exiftool "$1" | grep -E "$doi_regex")" && doi="${doi##*: }"
-	[ -z "$doi" ] && { info="$(exiftool "$1" | grep "^Title")"; info="${info##*: }"; }
+	doi="$(exiftool "$1" | grep -E "$doi_regex")" && doi="${doi##* : }"
+	[ -z "$doi" ] && { info="$(exiftool "$1" | grep "^Title")"; info="${info##* : }"; }
 	[ -z "$info" ] && info="$(pdftotext "$1" 2>/dev/null - | head -n 4)"
 	[ -z "$info" ] && NotiPrompt "Cannot identify doi, title or any content from pdf file." && exit 1
     else
 	info="$1"
+    fi
+}
+
+ScanBIB () {
+    if [ -n "$doi" ]; then
+	if grep "doi \?= \?{*" "$bibfile" | grep "$doi"; then
+	    NotiPrompt "Reference already added."
+	else
+	    BibGen
+	fi
+    elif [ -n "$info" ]; then
+	if grep "title \?= \?{*" "$bibfile" | grep "$info"; then
+	    NotiPrompt "Reference already added."
+	else
+	    DoiGen
+	    if [ -n "$doi" ]; then
+		BibGen
+	    else
+		BibYak
+	    fi
+	fi
     fi
 }
 
@@ -36,7 +57,7 @@ DoiGen () {
     doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
     if [ -n "$info" ] && command -v xclip; then
 	printf '%s' "" | xclip -selection clipboard # Clear clipboard
-	NotiPrompt "Copy DOI; If reference not found, copy non-DOI to acticate google scholar search"
+	NotiPrompt "Copy DOI; If DOI not found, copy all not DOI to activate google scholar search"
 	xdg-open "https://search.crossref.org/?q=$info" &
 	waitclip "xclip -o -selection clipboard"
 	if echo "$clip" | grep -E -q "$doi_regex"; then
@@ -67,21 +88,25 @@ bibnl () {
     # Add \n at end of file
     nl='
     '
-    if [ "$(tail -c 1 "$BIB")" != "$nl" ]; then
-	printf '%s\n' "" >> "$BIB"
+    if [ "$(tail -c 1 "$bibfile")" != "$nl" ]; then
+	printf '%s\n' "" >> "$bibfile"
     fi
 }
 
 BibGen () {
     # Usage: BibGen
     # Input: $doi
-    # Output: $bibtex >> $BIB
+    # Output: $bibtex >> $bibfile
     if [ -n "$doi" ]; then
 	bibtex="$(curl -s "http://api.crossref.org/works/$doi/transform/application/x-bibtex")"
-	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
-		printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*,"; then
+	    if ! grep "$info" "$bibfile"; then
+		printf '%s\n' "$bibtex" >> "$bibfile" && NotiPrompt "Reference added to $bibfile" && bibnl
+	    else
+		NotiPrompt "Reference already added"
+	    fi
 	else
-	    NotiPrompt "Reference already added"
+	    NotiPrompt "Not copying bibtex"
 	fi
     fi
 }
@@ -89,32 +114,40 @@ BibGen () {
 BibYak () {
     # Usage: BibYak
     # Input: $clip
-    # Output: $bibtex >> $BIB
+    # Output: $bibtex >> $bibfile
     clip=""
     if [ -n "$info" ] && command -v xclip; then
 	printf '%s' "" | xclip -selection clipboard # Clear clipboard
 	xdg-open "https://scholar.google.com/scholar?&q=$info" &
 	waitclip "xclip -o -selection clipboard"
 	bibtex="$clip"
-	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
-	    printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*,"; then
+	    if ! grep "$info" "$bibfile"; then
+		printf '%s\n' "$bibtex" >> "$bibfile" && NotiPrompt "Reference added to $bibfile" && bibnl
+	    else
+		NotiPrompt "Reference already added"
+	    fi
 	else
-	    NotiPrompt "Reference already added"
+	    NotiPrompt "Not copying bibtex"
 	fi
     elif [ -n "$info" ] && command -v xsel; then
 	xsel -bc # Clear clipboard
 	xdg-open "https://scholar.google.com/scholar?&q=$info" &
 	waitclip "xsel -o --clipboard"
 	bibtex="$clip"
-	if echo "$bibtex" | grep -E "^@[a-z]*{.*," && [ -z "$(grep -F "$info" $BIB)" ]; then
-	    printf '%s\n' "$bibtex" >> "$BIB" && NotiPrompt "Reference added to $BIB" && bibnl
+	if echo "$bibtex" | grep -E "^@[a-z]*{.*,"; then
+	    if ! grep "$info" "$bibfile"; then
+		printf '%s\n' "$bibtex" >> "$bibfile" && NotiPrompt "Reference added to $bibfile" && bibnl
+	    else
+		NotiPrompt "Reference already added"
+	    fi
 	else
-	    NotiPrompt "Reference already added / not exist"
+	    NotiPrompt "Not copying bibtex"
 	fi
     fi
 }
 
-
+# CheckBIB
 # CheckArg "$1"
 # if [ -z "$doi" ]; then
 #     DoiGen

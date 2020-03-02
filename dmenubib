@@ -7,17 +7,20 @@ BIB_NOTIF_FONT=Monospace-25
 BIB_GENERIC_COLOR=#005577
 BIB_SER="SER - Search BibTeX on Internet"
 BIB_REF="REF - Get BibTeX label for reference"
+BIB_OPN="OPN - Open corresponding pdf file based on BibTeX"
 BIB_PDF="PDF - Manually Rename and encode metadata into pdf"
 BIB_AUO="AUO - Automatically rename and encode metadata into pdf"
-BIBACTLIST="$(printf '%s\n' "$BIB_SER" "$BIB_REF" "$BIB_PDF" "$BIB_AUO")"
+BIBACTLIST="$(printf '%s\n' "$BIB_SER" "$BIB_REF" "$BIB_OPN" "$BIB_PDF" "$BIB_AUO")"
 nl='
 '
+act="placeholder"
 doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
 
 . dmenubib-menu
 . dmenubib-search
 . dmenubib-refer
 . dmenubib-pdfmeta
+. dmenubib-open
 
 CheckDeps () {
     depcount=0
@@ -35,16 +38,20 @@ CheckDeps grep awk dmenu exiftool sed eval pdftotext printf tail curl echo
 [ "$depcount" -gt 0 ] && exit 1
 
 BIB_Action () {
-    act="$(printf '%s\n' "$BIBACTLIST" | yprompt "Actions: " "$BIB_GENERIC_COLOR")"
-    case "$act" in
-	"$BIB_SER") BIB_SER ;;
-	"$BIB_REF") BIB_REF ;;
-	"$BIB_PDF") BIB_PDF ;;
-	"$BIB_AUO") BIB_AUO ;;
-    esac
+    while [ -n "$act" ]; do
+	act="$(printf '%s\n' "$BIBACTLIST" | yprompt "Actions: " "$BIB_GENERIC_COLOR")"
+	case "$act" in
+	    "$BIB_SER") BIB_SER ;;
+	    "$BIB_REF") BIB_REF ;;
+	    "$BIB_OPN") BIB_OPN ;;
+	    "$BIB_PDF") BIB_PDF ;;
+	    "$BIB_AUO") BIB_AUO ;;
+	esac
+    done
 }
 
 BIB_SER () {
+    CheckBIB
     criteria="$(printf '%s\n' "Text" "PDF" | yprompt "Searching criteria: " "$BIB_GENERIC_COLOR")"
     case "$criteria" in
 	"Text")
@@ -56,22 +63,19 @@ BIB_SER () {
 	    [ -n "$CHOICE" ] && CheckArg "$CHOICE"
 	    ;;
     esac
-    if [ -z "$doi" ]; then
-	DoiGen
-	if [ -n "$doi" ]; then
-	    BibGen
-	else
-	    BibYak
-	fi
-    else
-	BibGen
-    fi
+    ScanBIB
 }
 
 BIB_REF () {
     CheckBIB
     SearchBIB
     RefBIB
+}
+
+BIB_OPN () {
+    CheckBIB
+    SearchBIB
+    OpenBIB
 }
 
 BIB_PDF () {

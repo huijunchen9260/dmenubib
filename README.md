@@ -43,6 +43,10 @@ Two ways to search: `Text` or `PDF`.
 
 Choose the criterion to search in `$BIB`. Copy the label of chosen bibtex to clipboard.
 
+### `OPN` to open corresponding pdf file
+
+Choose the criterion to search in `$BIB`. Open the corresponding pdf in `$BIB_PDF_PATH`.
+
 ### `PDF` to Manually Rename and encode metadata into pdf
 
 Choose pdf files, and choose which bibtex entry to generate metadata.
@@ -52,4 +56,6 @@ PDF will be renamed as bibtex label, and attached with Title, Author, and doi me
 ### `AUO` to Automatically rename and encode metadata into pdf
 
 Automatically go through all pdf files in `$BIB_PDF_PATH`, check whether correctly named. `Dmenubib` will generate a list of unmatched pdf files, and allow manual rename and encode metadata using `PDF` function.
+
+**Caveat: `AUO` update pdf based on pdf filename. So if you update your bibtex and want to update metadata, use `PDF` instead.**
 

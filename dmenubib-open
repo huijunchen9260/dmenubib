@@ -1,0 +1,24 @@
+#!/bin/sh
+
+OpenBIB () {
+    # Usage: OpenBIB
+    # Input: $criterion
+    # Output: Open pdf files
+    case "$criterion" in
+	"title")
+	    bibtexgen "/$cite/"
+	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    ;;
+	"authoryear")
+	    cite_author="${cite%% --- *}"
+	    cite_year="${cite##* --- }"
+	    bibtexgen "/$cite_author/ && /$cite_year/"
+	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    ;;
+	"mixed")
+	    cite_title="${cite##* --- }"
+	    bibtexgen "/$cite_title/"
+	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    ;;
+    esac
+}
