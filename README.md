@@ -59,3 +59,8 @@ Automatically go through all pdf files in `$BIB_PDF_PATH`, check whether correct
 
 **Caveat: `AUO` update pdf based on pdf filename. So if you update your bibtex and want to update metadata, use `PDF` instead.**
 
+## `NTE` to write notes for each reference
+
+Store the notes for each paper as markdown file in `$BIB_PDF_PATH/Notes`.
+
+Each `.md` file is named after the bibtex label in `$BIB`.

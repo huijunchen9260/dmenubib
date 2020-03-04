@@ -1,7 +1,8 @@
 #!/bin/sh
 
-# BIB="$BIB"
-# BIB_PDF_PATH="$BIB_PDF_PATH"
+BIB="$BIB"
+BIB_PDF_PATH="$BIB_PDF_PATH"
+BIB_NOTE_PATH="$BIB_PDF_PATH/Notes"
 BIB_GENERIC_FONT=Monospace-15
 BIB_NOTIF_FONT=Monospace-25
 BIB_GENERIC_COLOR=#005577
@@ -10,11 +11,14 @@ BIB_REF="REF - Get BibTeX label for reference"
 BIB_OPN="OPN - Open corresponding pdf file based on BibTeX"
 BIB_PDF="PDF - Manually Rename and encode metadata into pdf"
 BIB_AUO="AUO - Automatically rename and encode metadata into pdf"
-BIBACTLIST="$(printf '%s\n' "$BIB_SER" "$BIB_REF" "$BIB_OPN" "$BIB_PDF" "$BIB_AUO")"
+BIB_NTE="NTE - Write markdown notes on references"
+BIBACTLIST="$(printf '%s\n' "$BIB_SER" "$BIB_REF" "$BIB_OPN" "$BIB_PDF" "$BIB_AUO" "$BIB_NTE")"
 nl='
 '
 act="placeholder"
 doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
+
+[ ! -d "$BIB_NOTE_PATH" ] && mkdir "$BIB_NOTE_PATH"
 
 . dmenubib-menu
 . dmenubib-search
@@ -46,6 +50,7 @@ BIB_Action () {
 	    "$BIB_OPN") BIB_OPN ;;
 	    "$BIB_PDF") BIB_PDF ;;
 	    "$BIB_AUO") BIB_AUO ;;
+	    "$BIB_NTE") BIB_NTE ;;
 	esac
     done
 }
@@ -76,6 +81,12 @@ BIB_OPN () {
     CheckBIB
     SearchBIB
     OpenBIB
+}
+
+BIB_NTE () {
+    CheckBIB
+    SearchBIB
+    NoteBIB
 }
 
 BIB_PDF () {

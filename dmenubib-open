@@ -7,18 +7,55 @@ OpenBIB () {
     case "$criterion" in
 	"title")
 	    bibtexgen "/$cite/"
-	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
 	    ;;
 	"authoryear")
 	    cite_author="${cite%% --- *}"
 	    cite_year="${cite##* --- }"
 	    bibtexgen "/$cite_author/ && /$cite_year/"
-	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
 	    ;;
 	"mixed")
 	    cite_title="${cite##* --- }"
 	    bibtexgen "/$cite_title/"
-	    [ -n "$ref" ] && xdg-open "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    ;;
+    esac
+}
+
+NoteOpen () {
+    note="$BIB_NOTE_PATH/$ref.md"
+    [ ! -f "$note" ] && touch "$note"
+    mimetype=$(xdg-mime query filetype "$note")
+    appdesktop=$(xdg-mime query default "$mimetype")
+    if grep -q "Terminal=false" < "$(find "$XDGDIR1" "$XDGDIR2" -name "$appdesktop" | tail -n 1)" ; then
+	${BIB_OPENER:-xdg-open} "$note"
+    else
+	$TERMINAL -e "${BIB_OPENER:-xdg-open}" "$note"
+    fi
+}
+
+NoteBIB () {
+    # Usage: NoteBIB
+    # Input: $criterion
+    # Output: Open Note file
+    XDGDIR1=/usr/share/applications
+    XDGDIR2=/usr/local/share/applications
+    case "$criterion" in
+	"title")
+	    bibtexgen "/$cite/"
+	    [ -n "$ref" ] && NoteOpen
+	    ;;
+	"authoryear")
+	    cite_author="${cite%% --- *}"
+	    cite_year="${cite##* --- }"
+	    bibtexgen "/$cite_author/ && /$cite_year/"
+	    [ -n "$ref" ] && NoteOpen
+	    ;;
+	"mixed")
+	    cite_title="${cite##* --- }"
+	    bibtexgen "/$cite_title/"
+	    [ -n "$ref" ] && NoteOpen
 	    ;;
     esac
 }

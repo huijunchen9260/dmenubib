@@ -13,11 +13,6 @@ colbind () {
     }'
 }
 
-# refgen () { # Usage: refgen [PATTERN]
-#     file="$(cat -u "$bibfile" | sed 's/\\//g')"
-#     ref="$(printf '%s' "$file" | awk -v RS='@' "$1" | head -n 1 | sed "s/.*{//g; s/,$//g")"
-# }
-
 clipcopy () {
     # Usage:  clipcopy [CONTENT]
     # Input: "$1"
