@@ -69,6 +69,7 @@ BIB_SER () {
 	    ;;
     esac
     ScanBIB
+    unset doi info
 }
 
 BIB_REF () {
@@ -95,8 +96,10 @@ BIB_PDF () {
     if [ -n "$CHOICE" ]; then
 	CheckArg "$CHOICE"
 	SearchBIB
-	MetaGen
-	MetaPDFBind "$CHOICE"
+	if [ -n "$ref" ]; then
+	    MetaGen
+	    MetaPDFBind "$CHOICE"
+	fi
     fi
 }
 

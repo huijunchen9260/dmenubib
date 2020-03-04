@@ -80,9 +80,13 @@ MetaFixGen () {
 	CHOICE=$(printf '%s\n' "$faillist" | sed "/^$/ d" | yprompt "Select PDF files: " "$BIB_GENERIC_COLOR")
 	if [ -n "$CHOICE" ]; then
 	    SearchBIB
-	    MetaGen
-	    MetaPDFBind "$CHOICE"
-	    faillist="$(printf '%s\n' "${faillist#*"$CHOICE"}" "${faillist%%"$CHOICE"*}")"
+	    if [ -n "$ref" ]; then
+		MetaGen
+		MetaPDFBind "$CHOICE"
+		faillist="$(printf '%s\n' "${faillist#*"$CHOICE"}" "${faillist%%"$CHOICE"*}")"
+	    else
+		break
+	    fi
 	else
 	    break
 	fi
@@ -97,9 +101,6 @@ MetaPDFBind () {
     # Output: metadata -> pdf
     if exiftool -Title="$title" -Author="$author" -doi="$doi" -filename="$ref.pdf" "$1" -overwrite_original; then
 	NotiPrompt "$ref Added"
-	ref=""
-	title=""
-	author=""
-	doi=""
+	unset ref title author doi
     fi
 }

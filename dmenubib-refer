@@ -29,34 +29,21 @@ SearchBIB () {
     # Input: Dmenu choice
     # Output: $cite
     criterion="$(printf '%s\n' "title" "authoryear" "mixed" | yprompt "Choose selection criterion: " "$BIB_GENERIC_COLOR")"
-    title="$(cat -u $BIB | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
-    author="$(cat -u $BIB | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
-    year="$(cat -u $BIB | grep -i "year.*" | sed "s/^.*year \?= \?{\?//g; s/}\?,\?$//g")"
-    date="$(cat -u $BIB | grep -i "date.*" | sed "s/^.*date \?= \?{\?//g; s/}\?,\?$//g")"
+    title="$(cat -u "$BIB" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
+    author="$(cat -u "$BIB" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
+    year="$(cat -u "$BIB" | grep -i "year.*" | sed "s/^.*year \?= \?{\?//g; s/}\?,\?$//g")"
     case "$criterion" in
 	"title")
 	    cite="$(printf '%s' "$title" | yprompt "Selct reference title: " "$BIB_GENERIC_COLOR")"
 	    ;;
 	"authoryear")
-	    cite="$(
-	    if [ -n "$date" ]; then
-		colbind "$author" "$date" | yprompt "Select author and date: " "$BIB_GENERIC_COLOR"
-	    else
-		colbind "$author" "$year" | yprompt "Select author and year: " "$BIB_GENERIC_COLOR"
-	    fi
-	    )"
+	    cite="$(colbind "$author" "$year" | yprompt "Select author and year: " "$BIB_GENERIC_COLOR")"
 	    ;;
 	"mixed")
 	    cite="$(
-	    if [ -n "$date" ]; then
-		TMP="$(colbind "$author" "$date")"
-		colbind "$TMP" "$title" | yprompt "Select author, date and title: " "$BIB_GENERIC_COLOR"
-		unset TMP
-	    else
 		TMP="$(colbind "$author" "$year")"
 		colbind "$TMP" "$title" | yprompt "Select author, year and title: " "$BIB_GENERIC_COLOR"
 		unset TMP
-	    fi
 	    )"
 	    ;;
     esac
@@ -89,13 +76,9 @@ CheckBIB () {
     # Usage: CheckBIB
     # Input: $BIB
     # Output: $bibfile
-    if [ -n "$(echo "$BIB")" ]; then
+    if [ -n "$BIB" ]; then
 	bibfile="$BIB"
     else
 	NotiPrompt "Need to set environment variable '$BIB'" && exit 1
     fi
 }
-
-# CheckBIB
-# SearchBIB
-# RefBIB
