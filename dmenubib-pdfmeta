@@ -80,8 +80,8 @@ MetaFixGen () {
 	CHOICE=$(printf '%s\n' "$faillist" | sed "/^$/ d" | yprompt "Select PDF files: " "$BIB_GENERIC_COLOR")
 	if [ -n "$CHOICE" ]; then
 	    SearchBIB
+	    MetaGen
 	    if [ -n "$ref" ]; then
-		MetaGen
 		MetaPDFBind "$CHOICE"
 		faillist="$(printf '%s\n' "${faillist#*"$CHOICE"}" "${faillist%%"$CHOICE"*}")"
 	    else

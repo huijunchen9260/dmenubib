@@ -25,7 +25,11 @@ OpenBIB () {
 
 NoteOpen () {
     note="$BIB_NOTE_PATH/$ref.md"
-    [ ! -f "$note" ] && touch "$note"
+    if [ ! -f "$note" ]; then
+	title="$(printf '%s' "$bibtex" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
+	author="$(printf '%s' "$bibtex" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
+	printf '%s\n\n' "# $title" "Author: $author" > "$note"
+    fi
     mimetype=$(xdg-mime query filetype "$note")
     appdesktop=$(xdg-mime query default "$mimetype")
     if grep -q "Terminal=false" < "$(find "$XDGDIR1" "$XDGDIR2" -name "$appdesktop" | tail -n 1)" ; then
