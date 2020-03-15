@@ -1,5 +1,15 @@
 #!/bin/sh
 
+PDFOpen () {
+    if [ -n "$ref" ]; then
+	${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf"
+    elif [ -n "$cite" ]; then
+	NotiPrompt "$cite.pdf does not exist"
+    else
+	continue
+    fi
+}
+
 OpenBIB () {
     # Usage: OpenBIB
     # Input: $criterion
@@ -7,18 +17,18 @@ OpenBIB () {
     case "$criterion" in
 	"title")
 	    bibtexgen "/$cite/"
-	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    PDFOpen
 	    ;;
 	"authoryear")
 	    cite_author="${cite%% --- *}"
 	    cite_year="${cite##* --- }"
 	    bibtexgen "/$cite_author/ && /$cite_year/"
-	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    PDFOpen
 	    ;;
 	"mixed")
 	    cite_title="${cite##* --- }"
 	    bibtexgen "/$cite_title/"
-	    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$ref.pdf does not exists"
+	    PDFOpen
 	    ;;
     esac
 }

@@ -31,7 +31,7 @@ ScanBIB () {
 	if grep "title \?= \?{*" "$bibfile" | grep "$info"; then
 	    NotiPrompt "Reference already added."
 	else
-	    DoiGen
+	    DoiMenu
 	    if [ -n "$doi" ]; then
 		BibGen
 	    else
@@ -63,6 +63,47 @@ clipdoi () {
 	doi="${doi##*doi.org/}"
     else
 	doi=""
+    fi
+}
+
+DoiMenu () {
+    url="$(printf '%s' "$info" | tr ' ' '+')"
+    html="$(curl -s "https://search.crossref.org/?q=$url")"
+    TMP="${html##*<table>}"
+    TMP2="${TMP%%</table>*}"
+    research="$(
+	printf '%s' "$TMP2" |
+	sed "
+		s/<p class='lead'>/@/g;
+		s/<[^>]*>//g
+		/^$/ d
+	" |
+	awk 'BEGIN {
+	    RS="@";
+	}
+	{
+	    n=split($0, sp, /\n/)
+	    title = sp[2]
+	    category = sp[3]
+	    for (i=1; i in sp; i++) {
+		if (match(sp[i], /^[0-9][0-9][0-9][0-9]$/))
+		    year = sp[i]
+		else if (match(sp[i], /Authors:.*/))
+		    author = sp[i]
+		else if (match(sp[i-1], /^in$/))
+		    journal = sp[i]
+                else if (match(sp[i], /(https:\/\/)?10\.[0-9][0-9][0-9][0-9][0-9.]*\/[^[:space:]]*/))
+                    doi = sp[i]
+		}
+	    if (length(journal) == 0)
+		print title, "- " category, "- " year, "- " author, "- " doi
+	    else
+		print title, "- " category, "- " journal, "- " year, "- " author, "- " doi
+	}' |
+	sed "1 d; /^$/ d; s/^ //g; s/ $//g" | yprompt "Choose correct citation" "$BIB_GENERIC_COLOR"
+    )"
+    if [ -n "$research" ]; then
+	doi="$(printf '%s' "${research##*doi.org/}")"
     fi
 }
 
