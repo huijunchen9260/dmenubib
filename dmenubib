@@ -59,14 +59,8 @@ BIB_SER () {
     CheckBIB
     criteria="$(printf '%s\n' "Text" "PDF" | yprompt "Searching criteria: " "$BIB_GENERIC_COLOR")"
     case "$criteria" in
-	"Text")
-	    input="$(xprompt "Type text to search: " "$BIB_GENERIC_COLOR")"
-	    [ -n "$input" ] && CheckArg "$input"
-	    ;;
-	"PDF")
-	    MainMenu
-	    [ -n "$CHOICE" ] && CheckArg "$CHOICE"
-	    ;;
+	"Text") input="$(xprompt "Type text to search: " "$BIB_GENERIC_COLOR")" && [ -n "$input" ] && CheckArg "$input" ;;
+	"PDF") MainMenu && [ -n "$CHOICE" ] && CheckArg "$CHOICE" ;;
     esac
     ScanBIB
     unset doi info
@@ -80,8 +74,12 @@ BIB_REF () {
 
 BIB_OPN () {
     CheckBIB
-    SearchBIB
-    OpenBIB
+    open="$(printf '%s\n' "PDF" "$BIB_PDF_PATH" "$BIB" | yprompt "Open: " "$BIB_GENERIC_COLOR")"
+    case "$open" in
+	"PDF") SearchBIB && OpenBIB ;;
+	"$BIB_PDF_PATH") [ -n "$TERMINAL" ] && cd "$BIB_PDF_PATH" && $TERMINAL || ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH" ;;
+	"$BIB") [ -n "$TERMINAL" ] && $TERMINAL -e "${EDITOR:-vi}" "$BIB" || ${BIB_OPENER:-xdg-open} "$BIB" ;;
+    esac
 }
 
 BIB_NTE () {
@@ -93,14 +91,11 @@ BIB_NTE () {
 BIB_PDF () {
     CheckBIB
     MainMenu
-    if [ -n "$CHOICE" ]; then
-	CheckArg "$CHOICE"
-	SearchBIB
-	if [ -n "$ref" ]; then
-	    MetaGen
-	    MetaPDFBind "$CHOICE"
-	fi
-    fi
+    [ -n "$CHOICE" ] &&
+	SearchBIB &&
+	[ -n "$cite" ] &&
+	MetaGen &&
+	MetaPDFBind "$CHOICE"
 }
 
 BIB_AUO () {

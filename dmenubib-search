@@ -7,14 +7,24 @@ CheckArg () {
     doi_regex='(https://doi.org/)?10\.[0-9]{4}[0-9.]*/[^[:space:]]*'
     if echo "$1" | grep -E -q "$doi_regex"; then
 	doi="$1"
+	pdf="false"
     elif [ "$(dd if="$1" count=4 bs=1)" = "%PDF" ]; then
+	pdf="$1"
 	doi="$(exiftool "$1" | grep -E "$doi_regex")" && doi="${doi##* : }"
 	[ -z "$doi" ] && { info="$(exiftool "$1" | grep "^Title")"; info="${info##* : }"; }
 	[ -z "$info" ] && info="$(pdftotext "$1" 2>/dev/null - | head -n 1)"
 	[ -z "$info" ] && NotiPrompt "Cannot identify doi, title or any content from pdf file." && exit 1
     else
 	info="$1"
+	pdf="false"
     fi
+}
+
+OpenDoi () {
+    # Usage: OpenDoi
+    # Input: $doi
+    # Output: open browser
+    [ "$pdf" = "false" ] && [ -n "$doi" ] && AskPrompt "Download corresponding pdf files?" && xdg-open "https://doi.org/$doi"
 }
 
 ScanBIB () {
@@ -34,6 +44,7 @@ ScanBIB () {
 	    DoiMenu
 	    if [ -n "$doi" ]; then
 		BibGen
+		OpenDoi
 	    else
 		BibYak
 	    fi
@@ -58,15 +69,13 @@ clipdoi () {
     # Usage: clipdoi
     # Input: $clip
     # OUtput: $doi
-    if echo "$clip" | grep -E -q "$doi_regex"; then
-	doi="$clip"
-	doi="${doi##*doi.org/}"
-    else
-	doi=""
-    fi
+    echo "$clip" | grep -E -q "$doi_regex" && { doi="$clip"; doi="${doi##*doi.org/}"; } || doi=""
 }
 
 DoiMenu () {
+    # Usage: DoiMenu
+    # Input: $info
+    # Output: search content on dmenu
     url="$(printf '%s' "$info" | tr ' ' '+')"
     html="$(curl -s "https://search.crossref.org/?q=$url")"
     TMP="${html##*<table>}"
@@ -102,9 +111,7 @@ DoiMenu () {
 	}' |
 	sed "1 d; /^$/ d; s/^ //g; s/ $//g" | yprompt "Choose correct citation" "$BIB_GENERIC_COLOR"
     )"
-    if [ -n "$research" ]; then
-	doi="$(printf '%s' "${research##*doi.org/}")"
-    fi
+    [ -n "$research" ] && doi="$(printf '%s' "${research##*doi.org/}")"
 }
 
 DoiGen () {
@@ -133,23 +140,20 @@ DoiGen () {
 
 bibnl () {
     # Add \n at end of file
-    if [ "$(tail -c 1 "$bibfile")" != "$nl" ]; then
-	printf '%s\n' "" >> "$bibfile"
-    fi
+    [ "$(tail -c 1 "$bibfile")" != "$nl" ] && printf '%s\n' "" >> "$bibfile"
 }
 
 BibGen () {
     # Usage: BibGen
     # Input: $doi
     # Output: $bibtex >> $bibfile
-    if [ -n "$doi" ]; then
-	bibtex="$(curl -s "http://api.crossref.org/works/$doi/transform/application/x-bibtex")"
-	if ! grep "$info" "$bibfile"; then
-	    printf '%s\n' "$bibtex" >> "$bibfile" && NotiPrompt "Reference added to $bibfile" && bibnl
-	else
-	    NotiPrompt "Reference already added"
-	fi
-    fi
+    [ -n "$doi" ] &&
+	bibtex="$(curl -s "http://api.crossref.org/works/$doi/transform/application/x-bibtex")" &&
+	! grep "$info" "$bibfile" &&
+	printf '%s\n' "$bibtex" >> "$bibfile" &&
+	NotiPrompt "Reference added to $bibfile" &&
+	bibnl ||
+	NotiPrompt "Reference already added"
 }
 
 clipbib () {
@@ -158,8 +162,9 @@ clipbib () {
     # Output: $bibtex >> $bibfile
     bibtex="$clip"
     bibtex_regex='^@[a-z]*{.*,'
+    title="$(printf '%s' "$bibtex" | grep "title")"; title="${title##*\{}"; title="${title%%\}*}"
     if echo "$bibtex" | grep -E -q "$bibtex_regex"; then
-	if ! grep "$info" "$bibfile"; then
+	if ! grep "$title" "$bibfile"; then
 	    printf '%s\n' "$bibtex" >> "$bibfile" && NotiPrompt "Reference added to $bibfile" && bibnl
 	else
 	    NotiPrompt "Reference already added"

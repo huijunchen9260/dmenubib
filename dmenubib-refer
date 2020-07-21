@@ -5,8 +5,8 @@ colbind () {
     # Input: "$1" "$2"
     # Output: "$1" --- "$2"
     awk -v awk_lpart="$1" -v awk_rpart="$2" 'BEGIN{
-	split(awk_lpart,lp,/\n/)
-	split(awk_rpart,rp,/\n/)
+	split(awk_lpart,lp,/#/)
+	split(awk_rpart,rp,/#/)
 	for (i=1; i in lp; i++) {
 	    print lp[i],"--- " rp[i]
 	}
@@ -17,11 +17,8 @@ clipcopy () {
     # Usage:  clipcopy [CONTENT]
     # Input: "$1"
     # Output: Copy to clipboard
-    if [ -n "$1" ] && command -v xclip; then
-	printf '%s' "$1" | xclip -selection clipboard
-    elif [ -n "$1" ] && command -v xsel; then
-	printf '%s' "$1" | xsel --clipboard
-    fi
+    [ -n "$1" ] && command -v xclip && printf '%s' "$1" | xclip -selection clipboard
+    [ -n "$1" ] && command -v xsel && printf '%s' "$1" | xsel --clipboard
 }
 
 SearchBIB () {
@@ -29,19 +26,22 @@ SearchBIB () {
     # Input: Dmenu choice
     # Output: $cite
     criterion="$(printf '%s\n' "title" "authoryear" "mixed" | yprompt "Choose selection criterion: " "$BIB_GENERIC_COLOR")"
-    title="$(cat -u "$BIB" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
-    author="$(cat -u "$BIB" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
-    year="$(cat -u "$BIB" | grep -i "year.*" | sed "s/^.*year \?= \?{\?//g; s/}\?,\?$//g")"
+    title="$(cat -u "$BIB" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g" | tr '\n' '#')"
+    title="${title%#}"
+    author="$(cat -u "$BIB" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g" | tr '\n' '#')"
+    author="${author%#}"
+    year="$(cat -u "$BIB" | grep -i "year.*" | sed "s/^.*year \?= \?{\?//g; s/}\?,\?$//g" | tr '\n' '#')"
+    year="${year%#}"
     case "$criterion" in
 	"title")
-	    cite="$(printf '%s' "$title" | yprompt "Selct reference title: " "$BIB_GENERIC_COLOR")"
+	    cite="$(printf '%s' "$title" | tr '#' '\n' | yprompt "Selct reference title: " "$BIB_GENERIC_COLOR")"
 	    ;;
 	"authoryear")
 	    cite="$(colbind "$author" "$year" | yprompt "Select author and year: " "$BIB_GENERIC_COLOR")"
 	    ;;
 	"mixed")
 	    cite="$(
-		TMP="$(colbind "$author" "$year")"
+		TMP="$(colbind "$author" "$year" | tr '\n' '#')"
 		colbind "$TMP" "$title" | yprompt "Select author, year and title: " "$BIB_GENERIC_COLOR"
 		unset TMP
 	    )"
@@ -76,9 +76,5 @@ CheckBIB () {
     # Usage: CheckBIB
     # Input: $BIB
     # Output: $bibfile
-    if [ -n "$BIB" ]; then
-	bibfile="$BIB"
-    else
-	NotiPrompt "Need to set environment variable '$BIB'" && exit 1
-    fi
+    [ -n "$BIB" ] && bibfile="$BIB" || NotiPrompt "Need to set environment variable '$BIB'"
 }

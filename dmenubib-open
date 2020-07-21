@@ -1,13 +1,7 @@
 #!/bin/sh
 
 PDFOpen () {
-    if [ -n "$ref" ]; then
-	${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf"
-    elif [ -n "$cite" ]; then
-	NotiPrompt "$cite.pdf does not exist"
-    else
-	continue
-    fi
+    [ -n "$ref" ] && ${BIB_OPENER:-xdg-open} "$BIB_PDF_PATH/$ref.pdf" || NotiPrompt "$cite.pdf does not exist"
 }
 
 OpenBIB () {
@@ -33,28 +27,65 @@ OpenBIB () {
     esac
 }
 
+# NoteOpen () {
+#     note="$BIB_NOTE_PATH/$ref.md"
+#     [ ! -f "$note" ] &&
+# 	title="$(printf '%s' "$bibtex" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")" &&
+# 	author="$(printf '%s' "$bibtex" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")" &&
+# 	printf '%s\n\n' "# $title" "Author: $author" > "$note"
+#     mimetype=$(xdg-mime query filetype "$note")
+#     appdesktop=$(xdg-mime query default "$mimetype")
+#     grep -q "Terminal=false" < "$(find "$XDGDIR1" "$XDGDIR2" -name "$appdesktop" | tail -n 1)" &&
+# 	${BIB_OPENER:-xdg-open} "$note" ||
+# 	$TERMINAL -e "${BIB_OPENER:-xdg-open}" "$note"
+# }
+
 NoteOpen () {
-    note="$BIB_NOTE_PATH/$ref.md"
-    if [ ! -f "$note" ]; then
-	title="$(printf '%s' "$bibtex" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")"
-	author="$(printf '%s' "$bibtex" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")"
-	printf '%s\n\n' "# $title" "Author: $author" > "$note"
-    fi
-    mimetype=$(xdg-mime query filetype "$note")
-    appdesktop=$(xdg-mime query default "$mimetype")
-    if grep -q "Terminal=false" < "$(find "$XDGDIR1" "$XDGDIR2" -name "$appdesktop" | tail -n 1)" ; then
-	${BIB_OPENER:-xdg-open} "$note"
-    else
-	$TERMINAL -e "${BIB_OPENER:-xdg-open}" "$note"
-    fi
+    note="$BIB_NOTE_PATH/$ref/$ref.tex"
+    [ ! -f "$note" ] &&
+	title="$(printf '%s' "$bibtex" | grep -i "title.*" | sed "s/^.*title \?= \?{\?//g; s/}\?,\?$//g")" &&
+	author="$(printf '%s' "$bibtex" | grep -i "author.*" | sed "s/^.*author \?= \?{\?//g; s/}\?,\?$//g")" &&
+	mkdir -p "$BIB_NOTE_PATH/$ref/" &&
+	printf '%s\n' \
+	    '\documentclass[a4paper]{article}' \
+	    '\usepackage[utf8]{inputenc}' \
+	    '\usepackage[T1]{fontenc}' \
+	    '\usepackage{textcomp}' \
+	    '\usepackage{amsmath, amssymb, amsthm}' \
+	    '\usepackage{import}' \
+	    '\usepackage{pdfpages}' \
+	    '\usepackage{transparent}' \
+	    '\usepackage{xcolor}' \
+	    '\newcommand{\inkfig}[2][1]{%' \
+	    '    \def\svgwidth{#1\columnwidth}' \
+	    '    \import{./figures/}{#2.pdf_tex}' \
+	    '}' \
+	    '\pdfsuppresswarningpagegroup=1' \
+	    "\\title{Hui-Jun Chen's Note on \"$title\"}" \
+	    "\\author{Author(s): $author}" \
+	    '\date{\today}' \
+	    '\begin{document}' \
+	    '\maketitle' \
+	    '' \
+	    '' \
+	    '' \
+	    '\end{document}' > "$note"
+    mimetype=$(file --mime-type -b "$note" 2>/dev/null)
+    case "$mimetype" in
+	text/*|*x-empty*|*json*)
+	    case "$TERMINAL" in
+		"") ${BIB_OPENER:-xdg-open} "$note" ;;
+		*) $TERMINAL -e "${EDITOR:-vi}" "$note" ;;
+	    esac
+	    ;;
+	*) ${BIB_OPENER:-xdg-open} "$note" ;;
+    esac
 }
 
 NoteBIB () {
     # Usage: NoteBIB
     # Input: $criterion
     # Output: Open Note file
-    XDGDIR1=/usr/share/applications
-    XDGDIR2=/usr/local/share/applications
     case "$criterion" in
 	"title")
 	    bibtexgen "/$cite/"

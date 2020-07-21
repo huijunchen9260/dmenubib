@@ -8,7 +8,7 @@ A simple bibliography manager using dmenu
 ## Dependency
 
 - `dmenu`, `exiftool`, `pdftotext`
-- `grep`, `awk`, `sed`, `eval`, `tail`x, `curl`
+- `grep`, `awk`, `sed`, `eval`, `tail`, `curl`
 - `printf`, `echo`, `xclip / xsel`
 
 ## Installation
@@ -64,3 +64,4 @@ Automatically go through all pdf files in `$BIB_PDF_PATH`, check whether correct
 Store the notes for each paper as markdown file in `$BIB_PDF_PATH/Notes`.
 
 Each `.md` file is named after the bibtex label in `$BIB`.
+

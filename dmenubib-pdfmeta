@@ -55,7 +55,7 @@ MetaAutoGen () {
     IFS="$nl"
     for pdf in $list; do
 	unset IFS
-	TMP="${pdf##*/}"; basename="${TMP%%.*}"
+	TMP="${pdf##*/}"; basename="${TMP%.*}"
 	if [ "$(head -n 1 "$pdf" | cut -c 1-4)" = "%PDF" ] &&
 	    [ -z "$(grep "@" "$bibfile" | grep "$basename")" ]; then
 	    title="$(exiftool "$pdf" | grep -i "Title")"; title="${title##*: }"
@@ -99,7 +99,9 @@ MetaPDFBind () {
     # Usage: MetaPDFBind
     # Input: $ref, $title, $author, $doi
     # Output: metadata -> pdf
+    IFS="$nl"
     if exiftool -Title="$title" -Author="$author" -doi="$doi" -filename="$ref.pdf" "$1" -overwrite_original; then
+	unset IFS
 	NotiPrompt "$ref Added"
 	unset ref title author doi
     fi

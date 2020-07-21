@@ -13,6 +13,10 @@ NotiPrompt () { # Usage NotiPrompt [MSG]
     dmenu -f -fn "$BIB_NOTIF_FONT" -sb "#d79921" -sf "#1d2021" -nf "#000000" -nb "#000000" -p "$1" <&-
 }
 
+AskPrompt () { # Usage: AskPrompt [MSG] && ...
+    [ "$(printf "No\\nYes" | dmenu -f -fn "$BIB_NOTIF_FONT" -i -p "$1" -sb "#d79921" -sf "#1d2021" -nf gray -nb "#000000")" = "Yes" ]
+}
+
 
 ## MENUFUNCTIONS
 
